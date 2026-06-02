@@ -1,0 +1,91 @@
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createInterface } from 'node:readline/promises';
+import { fileURLToPath } from 'node:url';
+import { createIgnore } from '../core/ignore.js';
+import { writeJson } from '../core/jsonfile.js';
+import { aiLogPaths } from '../core/paths.js';
+import { renderRecentMd } from '../core/recent.js';
+import { readFileState, walkFiles, writeSnapshot } from '../core/snapshots.js';
+import { installClaude } from '../integrations/claude.js';
+import { installCursor } from '../integrations/cursor.js';
+import { installClaudeRule, installCursorRule } from '../integrations/rules.js';
+import { VERSION } from '../index.js';
+
+const binPath = fileURLToPath(new URL('../../bin/ai-log.js', import.meta.url));
+
+const GITIGNORE = {
+  private: '*\n',
+  shared: 'snapshots/\nrecent.md\ndebug.log\n.lock/\n.reconcile\n',
+};
+
+function snapshotTree(root) {
+  let count = 0;
+  walkFiles(root, createIgnore(root), (abs, rel) => {
+    const state = readFileState(abs);
+    if (state.exists && !state.binary && !state.tooLarge) {
+      writeSnapshot(root, rel, state.content);
+      count++;
+    }
+  });
+  return count;
+}
+
+async function resolveStorage(options) {
+  if (options.private) return 'private';
+  if (options.shared) return 'shared';
+  if (options.yes || !process.stdin.isTTY) return 'private';
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await rl.question(
+    'Track the change history in git?\n  shared  — commit it so your team and future sessions share the memory\n  private — keep it on this machine only (.ai-log is gitignored)\nChoice [private]: ',
+  );
+  rl.close();
+  return answer.trim().toLowerCase().startsWith('s') ? 'shared' : 'private';
+}
+
+function resolveTools(options) {
+  if (options.claude && !options.cursor) return ['claude'];
+  if (options.cursor && !options.claude) return ['cursor'];
+  return ['claude', 'cursor'];
+}
+
+export async function init(options) {
+  const root = process.cwd();
+  const paths = aiLogPaths(root);
+  const reinit = existsSync(paths.base);
+
+  const storage = await resolveStorage(options);
+  const tools = resolveTools(options);
+
+  mkdirSync(paths.snapshots, { recursive: true });
+  if (!existsSync(paths.history)) writeFileSync(paths.history, '');
+  writeFileSync(paths.recent, renderRecentMd([]));
+  writeFileSync(paths.gitignore, GITIGNORE[storage]);
+  writeJson(paths.config, {
+    version: VERSION,
+    createdAt: new Date().toISOString(),
+    storage,
+    tools,
+  });
+
+  const snapshots = snapshotTree(root);
+
+  const installed = [];
+  if (tools.includes('claude')) {
+    installed.push(['Claude Code hooks', installClaude(root, binPath, options.debug)]);
+    installed.push(['Claude Code rule', installClaudeRule(root)]);
+  }
+  if (tools.includes('cursor')) {
+    installed.push(['Cursor hooks', installCursor(root, binPath, options.debug)]);
+    installed.push(['Cursor rule', installCursorRule(root)]);
+  }
+
+  const out = [];
+  out.push(`${reinit ? 'Re-initialized' : 'Initialized'} ai-log in ${paths.base}`);
+  out.push(`  history:   ${storage} (${storage === 'shared' ? 'committed to git' : 'gitignored, local only'})`);
+  out.push(`  baseline:  ${snapshots} file${snapshots === 1 ? '' : 's'} snapshotted`);
+  for (const [name, file] of installed) out.push(`  ${name}: ${file}`);
+  out.push('');
+  out.push('Hooks log every edit your agent makes; the rule tells it to read .ai-log/recent.md before editing.');
+  out.push('Restart your agent session to load both.');
+  console.log(out.join('\n'));
+}
