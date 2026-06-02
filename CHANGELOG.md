@@ -1,0 +1,22 @@
+# Changelog
+
+All notable changes to ai-log are documented here. The format is based on
+[Keep a Changelog](https://keepachangelog.com/), and the project follows
+[semantic versioning](https://semver.org/).
+
+## [0.1.1] - 2026-06-02
+
+### Fixed
+- The diff engine no longer allocates a quadratic table for large files, which could exhaust memory and crash the hook. Files above ~3000 lines now use a bounded, linear comparison.
+- Re-running `ai-log init` no longer blanks `recent.md` when a history already exists; it is rebuilt from the existing entries.
+
+### Changed
+- Clearer install and usage documentation.
+
+## [0.1.0] - 2026-06-02
+
+### Added
+- Initial release. Hook-driven change logging for Claude Code and Cursor: records every edit, summarizes recent changes with real diffs in `recent.md`, and feeds the relevant history back to the agent before it edits.
+- End-of-turn reconcile pass that catches edits (and deletions) made through the shell.
+- Shared or private history storage, secret- and `.gitignore`-aware filtering (including nested `.gitignore`), cross-process locking, atomic writes, and bounded/rotated history.
+- Zero runtime dependencies.

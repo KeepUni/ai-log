@@ -1,0 +1,47 @@
+{
+  "name": "@keepuni/ai-log",
+  "version": "0.1.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "A reliable change log for AI coding agents. Records every edit an agent makes and feeds the relevant recent history back before the next edit, so the agent stops forgetting and stops breaking what it already fixed.",
+  "type": "module",
+  "bin": {
+    "ai-log": "bin/ai-log.js"
+  },
+  "exports": "./src/index.js",
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "author": "KeepUni",
+  "keywords": [
+    "ai",
+    "claude-code",
+    "cursor",
+    "hooks",
+    "changelog",
+    "context",
+    "coding-agent",
+    "mcp"
+  ],
+  "license": "MIT",
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KeepUni/ai-log.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KeepUni/ai-log/issues"
+  },
+  "homepage": "https://github.com/KeepUni/ai-log#readme"
+}
