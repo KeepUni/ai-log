@@ -7,7 +7,7 @@ import { aiLogPaths } from '../core/paths.js';
 import { renderRecentMd } from '../core/recent.js';
 import { readFileState, walkFiles, writeSnapshot } from '../core/snapshots.js';
 import { readRecentEntries } from '../core/store.js';
-import { installClaude } from '../integrations/claude.js';
+import { installClaude, installClaudeMcp } from '../integrations/claude.js';
 import { installCursor } from '../integrations/cursor.js';
 import { installClaudeRule, installCursorRule } from '../integrations/rules.js';
 import { VERSION } from '../index.js';
@@ -74,6 +74,7 @@ export async function init(options) {
   if (tools.includes('claude')) {
     installed.push(['Claude Code hooks', installClaude(root, binPath, options.debug)]);
     installed.push(['Claude Code rule', installClaudeRule(root)]);
+    installed.push(['Claude Code MCP', installClaudeMcp(root, binPath)]);
   }
   if (tools.includes('cursor')) {
     installed.push(['Cursor hooks', installCursor(root, binPath, options.debug)]);

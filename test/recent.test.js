@@ -38,3 +38,18 @@ test('file context returns only the requested file', () => {
 test('file context is empty when the file has no history', () => {
   assert.equal(renderFileContext([entry('a.js')], 'zzz.js'), '');
 });
+
+test('file context surfaces files often changed alongside the target', () => {
+  const at = (file, ts) => ({ ts, tool: 'claude', file, size: 'minor', added: 1, removed: 0, kinds: [], patch: '@@ -0,0 +1,1 @@\n+x' });
+  const entries = [
+    at('a.js', '2026-06-02T10:00:00.000Z'),
+    at('b.js', '2026-06-02T10:00:30.000Z'),
+    at('a.js', '2026-06-02T11:00:00.000Z'),
+    at('b.js', '2026-06-02T11:00:20.000Z'),
+    at('c.js', '2026-06-02T15:00:00.000Z'),
+  ];
+  const ctx = renderFileContext(entries, 'a.js');
+  assert.match(ctx, /often changed alongside/i);
+  assert.match(ctx, /b\.js/);
+  assert.doesNotMatch(ctx, /c\.js/);
+});

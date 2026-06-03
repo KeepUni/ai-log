@@ -4,6 +4,9 @@ const EXCERPT_LINES = 8;
 const MAJOR_EXCERPT_LINES = 3;
 const FILE_ENTRIES = 5;
 const SAMPLE_LINES = 12;
+const CO_CHANGE_WINDOW_MS = 120000;
+const RELATED_LIMIT = 3;
+const RELATED_MIN = 2;
 
 function shortTime(iso) {
   return iso.replace('T', ' ').replace(/:\d{2}\.\d{3}Z$/, 'Z').replace(/\.\d{3}Z$/, 'Z');
@@ -32,6 +35,24 @@ function hunk(patch, max) {
   const head = lines.slice(0, max);
   if (lines.length > max) head.push(`... (${lines.length - max} more lines)`);
   return head.join('\n');
+}
+
+function relatedFiles(entries, file) {
+  const targetTimes = entries.filter((e) => e.file === file).map((e) => Date.parse(e.ts));
+  if (targetTimes.length === 0) return [];
+  const counts = new Map();
+  for (const entry of entries) {
+    if (entry.file === file) continue;
+    const t = Date.parse(entry.ts);
+    if (targetTimes.some((tt) => Math.abs(tt - t) <= CO_CHANGE_WINDOW_MS)) {
+      counts.set(entry.file, (counts.get(entry.file) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count >= RELATED_MIN)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, RELATED_LIMIT)
+    .map(([f]) => f);
 }
 
 export function renderRecentMd(entries) {
@@ -65,6 +86,15 @@ export function renderFileContext(entries, file) {
     lines.push(`* ${shortTime(entry.ts)} (${summary(entry)})`);
     const snippet = hunk(entry.patch, SAMPLE_LINES);
     if (snippet) lines.push('```diff', snippet, '```');
+  }
+
+  const related = relatedFiles(entries, file);
+  if (related.length) {
+    lines.push('', `Files often changed alongside ${file} (check them before you edit):`);
+    for (const rel of related) {
+      const last = entries.filter((e) => e.file === rel).at(-1);
+      lines.push(`* ${rel} (latest: ${summary(last)} ${shortTime(last.ts)})`);
+    }
   }
   return lines.join('\n');
 }

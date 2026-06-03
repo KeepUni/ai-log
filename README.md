@@ -8,6 +8,7 @@ AI writes code fast — then forgets what it did and breaks what it just fixed.
 ai-log keeps an accurate, compact record of every change and feeds the relevant history back to the agent *before* its next edit.
 
 [![npm version](https://img.shields.io/npm/v/@keepuni/ai-log.svg)](https://www.npmjs.com/package/@keepuni/ai-log)
+[![CI](https://github.com/KeepUni/ai-log/actions/workflows/ci.yml/badge.svg)](https://github.com/KeepUni/ai-log/actions/workflows/ci.yml)
 [![node](https://img.shields.io/node/v/@keepuni/ai-log.svg)](https://nodejs.org)
 ![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)
 [![license](https://img.shields.io/npm/l/@keepuni/ai-log.svg)](LICENSE)
@@ -86,6 +87,16 @@ You don't configure anything by hand. `ai-log init` writes both the hooks and th
 | `Stop` | — | Reconciles the working tree at the end of a turn, catching edits made through the shell |
 
 The `PreToolUse` injection is the key piece: right before Claude edits `src/auth.js`, it receives the recent ai-log history for `src/auth.js` specifically — relevant, and without flooding the context. `init` also writes a rule block to `CLAUDE.md` reinforcing that Claude should read `.ai-log/recent.md` before editing.
+
+**MCP server.** `init` also registers a built-in MCP server in `.mcp.json`, so Claude can pull history *on demand* (not just from the automatic injection) with three tools:
+
+| Tool | What it answers |
+| :-- | :-- |
+| `recent_changes` | What changed recently across the project |
+| `file_history` | Recent history of one file + files often changed alongside it |
+| `search_changes` | Find changes by keyword across file paths and diffs |
+
+The server is hand-written JSON-RPC over stdio — **still zero dependencies**.
 
 ### Cursor
 

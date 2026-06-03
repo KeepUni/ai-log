@@ -50,3 +50,25 @@ export function uninstallClaude(root) {
   writeJson(path, settings);
   return path;
 }
+
+export function installClaudeMcp(root, binPath) {
+  const path = join(root, '.mcp.json');
+  const config = readJson(path) || {};
+  config.mcpServers = config.mcpServers || {};
+  config.mcpServers['ai-log'] = {
+    type: 'stdio',
+    command: process.execPath.replace(/\\/g, '/'),
+    args: [binPath.replace(/\\/g, '/'), 'mcp'],
+  };
+  writeJson(path, config);
+  return path;
+}
+
+export function uninstallClaudeMcp(root) {
+  const path = join(root, '.mcp.json');
+  const config = readJson(path);
+  if (!config?.mcpServers?.['ai-log']) return null;
+  delete config.mcpServers['ai-log'];
+  writeJson(path, config);
+  return path;
+}

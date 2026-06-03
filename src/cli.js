@@ -3,6 +3,7 @@ import { context } from './commands/context.js';
 import { init } from './commands/init.js';
 import { status } from './commands/status.js';
 import { uninstall } from './commands/uninstall.js';
+import { serve } from './mcp.js';
 import { VERSION } from './index.js';
 
 const HELP = `ai-log ${VERSION} — a reliable change log for AI coding agents
@@ -55,6 +56,8 @@ export async function run(argv) {
       return init(flags);
     case 'capture':
       return capture({ tool: flags.tool, debug: flags.debug });
+    case 'mcp':
+      return serve();
     case 'status':
       return status();
     case 'context':
