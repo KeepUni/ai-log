@@ -11,8 +11,7 @@ const START = '<!-- ai-log:start -->';
 const END = '<!-- ai-log:end -->';
 const BLOCK = new RegExp(`\\n*${START}[\\s\\S]*?${END}\\n*`);
 
-export function installClaudeRule(root) {
-  const path = join(root, 'CLAUDE.md');
+function installBlockRule(path) {
   const block = `${START}\n## ai-log\n\n${RULE}\n${END}`;
   const existing = existsSync(path) ? readFileSync(path, 'utf8') : '';
   const content = existing.includes(START)
@@ -24,19 +23,24 @@ export function installClaudeRule(root) {
   return path;
 }
 
+function uninstallBlockRule(path) {
+  if (!existsSync(path)) return null;
+  const existing = readFileSync(path, 'utf8');
+  if (!existing.includes(START)) return null;
+  writeFileSync(path, `${existing.replace(BLOCK, '\n').trim()}\n`);
+  return path;
+}
+
+export const installClaudeRule = (root) => installBlockRule(join(root, 'CLAUDE.md'));
+export const uninstallClaudeRule = (root) => uninstallBlockRule(join(root, 'CLAUDE.md'));
+
+export const installWindsurfRule = (root) => installBlockRule(join(root, '.windsurfrules'));
+export const uninstallWindsurfRule = (root) => uninstallBlockRule(join(root, '.windsurfrules'));
+
 export function installCursorRule(root) {
   const path = join(root, '.cursor', 'rules', 'ai-log.mdc');
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `---\ndescription: Consult ai-log change history before editing\nalwaysApply: true\n---\n\n${RULE}\n`);
-  return path;
-}
-
-export function uninstallClaudeRule(root) {
-  const path = join(root, 'CLAUDE.md');
-  if (!existsSync(path)) return null;
-  const existing = readFileSync(path, 'utf8');
-  if (!existing.includes(START)) return null;
-  writeFileSync(path, existing.replace(BLOCK, '\n').trim() + '\n');
   return path;
 }
 

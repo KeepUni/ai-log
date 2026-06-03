@@ -52,6 +52,9 @@ function normalize(tool, payload) {
     if (event === 'sessionStart') return { mode: 'inject-global' };
     if (event === 'stop') return { mode: 'reconcile' };
   }
+  if (tool === 'windsurf') {
+    if (payload.agent_action_name === 'post_write_code') return { mode: 'record', file: payload.tool_info?.file_path };
+  }
   return { mode: 'noop' };
 }
 
@@ -186,7 +189,7 @@ export async function capture(options) {
 
   const { mode, file } = normalize(tool, payload);
   const root = locate(payload, file);
-  debug(root, `event=${payload.hook_event_name} tool=${tool} mode=${mode} file=${file ?? '-'} root=${root ?? 'none'}`);
+  debug(root, `event=${payload.hook_event_name || payload.agent_action_name} tool=${tool} mode=${mode} file=${file ?? '-'} root=${root ?? 'none'}`);
 
   if (mode === 'noop') return;
   if (mode === 'record' && !file) return;

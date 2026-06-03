@@ -110,6 +110,16 @@ Requires **Cursor 1.7+** (the version that introduced hooks). `init` adds to `.c
 
 **Honest limitation:** Cursor has no hook that injects context *before each individual edit*, so the automatic injection happens once per session (`sessionStart`). To cover edits within a session, `init` also writes a rule to `.cursor/rules/ai-log.mdc` (`alwaysApply: true`) telling the agent to read `.ai-log/recent.md` before editing. Logging itself is deterministic on every edit.
 
+### Windsurf
+
+Requires a Windsurf version with **Cascade Hooks**. `init` adds to `.windsurf/hooks.json`:
+
+| Hook | What it does |
+| :-- | :-- |
+| `post_write_code` | Records the edit after it happens (deterministic, every edit) |
+
+**Honest limitation:** Windsurf's hooks are observational — there is **no hook that can inject context back** to the agent (no session-start, and post-hooks can't return data). So on Windsurf, context is delivered **only** through the rule `init` writes to `.windsurfrules` ("read `.ai-log/recent.md` before editing"). Recording is fully deterministic; context delivery relies on the agent following that rule.
+
 ---
 
 ## Storage: shared vs private

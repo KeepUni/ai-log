@@ -9,7 +9,8 @@ import { readFileState, walkFiles, writeSnapshot } from '../core/snapshots.js';
 import { readRecentEntries } from '../core/store.js';
 import { installClaude, installClaudeMcp } from '../integrations/claude.js';
 import { installCursor } from '../integrations/cursor.js';
-import { installClaudeRule, installCursorRule } from '../integrations/rules.js';
+import { installClaudeRule, installCursorRule, installWindsurfRule } from '../integrations/rules.js';
+import { installWindsurf } from '../integrations/windsurf.js';
 import { VERSION } from '../index.js';
 
 const binPath = fileURLToPath(new URL('../../bin/ai-log.js', import.meta.url));
@@ -44,9 +45,8 @@ async function resolveStorage(options) {
 }
 
 function resolveTools(options) {
-  if (options.claude && !options.cursor) return ['claude'];
-  if (options.cursor && !options.claude) return ['cursor'];
-  return ['claude', 'cursor'];
+  const picked = ['claude', 'cursor', 'windsurf'].filter((tool) => options[tool]);
+  return picked.length ? picked : ['claude', 'cursor', 'windsurf'];
 }
 
 export async function init(options) {
@@ -79,6 +79,10 @@ export async function init(options) {
   if (tools.includes('cursor')) {
     installed.push(['Cursor hooks', installCursor(root, binPath, options.debug)]);
     installed.push(['Cursor rule', installCursorRule(root)]);
+  }
+  if (tools.includes('windsurf')) {
+    installed.push(['Windsurf hooks', installWindsurf(root, binPath)]);
+    installed.push(['Windsurf rule', installWindsurfRule(root)]);
   }
 
   const out = [];

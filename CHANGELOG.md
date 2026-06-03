@@ -4,7 +4,12 @@ All notable changes to ai-log are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [semantic versioning](https://semver.org/).
 
-## [0.2.0] - 2026-06-02
+## [0.3.0] - 2026-06-03
+
+### Added
+- Windsurf support via Cascade Hooks. `init` installs a `post_write_code` hook (`.windsurf/hooks.json`) for deterministic recording, plus a `.windsurfrules` rule for context. Windsurf hooks cannot inject context back to the agent, so on Windsurf context delivery is rule-based while recording stays deterministic.
+
+## [0.2.0] - 2026-06-03
 
 ### Added
 - Co-change context: before an agent edits a file, it now also sees the files most often changed alongside it (derived from the change history), so it checks related code first.

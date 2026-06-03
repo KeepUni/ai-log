@@ -9,7 +9,7 @@ import { VERSION } from './index.js';
 const HELP = `ai-log ${VERSION} — a reliable change log for AI coding agents
 
 Usage:
-  ai-log init [--shared|--private] [--claude] [--cursor] [--yes]
+  ai-log init [--shared|--private] [--claude] [--cursor] [--windsurf] [--yes]
   ai-log status
   ai-log context [file]
   ai-log uninstall
