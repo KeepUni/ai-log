@@ -22,6 +22,7 @@ ai-log keeps an accurate, compact record of every change and feeds the relevant 
 - **Zero runtime dependencies.** Installing ai-log pulls no other packages — it is plain Node.js.
 - **Deterministic, not hopeful.** It hooks into the editor's edit events, so logging always happens — it does not rely on the model "remembering" to read a file.
 - **Private by default.** Secrets and gitignored files are never recorded.
+- **Structural context, not just recent edits.** Before the agent edits a file, it sees what that file imports and what imports it — relevant from the very first edit, before any history exists.
 
 > ai-log does not solve the AI context problem. It makes one concrete part of it smaller: the agent gets an accurate, compact record of what changed recently, instead of guessing.
 
@@ -35,7 +36,7 @@ cd your-project
 ai-log init          # pick shared or private history
 ```
 
-Then **restart your AI editor**. That's it — every edit your agent makes is now logged, and it reads the recent history before touching your code.
+Then **restart your AI editor**. That's it — every edit your agent makes is now logged, and the relevant recent history is fed back to it before it edits.
 
 ---
 
@@ -60,12 +61,15 @@ When you run `ai-log init`, it does three things:
        ├── recent.md       ← compact, human- and AI-readable summary of recent changes
        ├── history.jsonl   ← append-only full history, one JSON object per edit
        ├── snapshots/      ← internal copies used to compute exact diffs
-       └── config.json
+       ├── config.json
+       └── graph.json      ← import graph: which file imports which
    ```
 
 2. Installs **hooks** and a **rule** in the AI tools you use (Claude Code, Cursor): the hooks call ai-log on every file edit; the rule tells the agent to read `.ai-log/recent.md` before it edits.
 
 3. On each edit, the hook diffs the file against ai-log's last snapshot, classifies the change, appends it to `history.jsonl`, and rewrites `recent.md`. The agent is fed recent history before it edits: in Claude Code the hook injects the history of the specific file being edited; in Cursor it is provided at the start of a session. The installed rule reinforces this in both.
+
+**Structural context.** ai-log also builds a lightweight import graph of your JavaScript/TypeScript files. Before the agent edits a file, it is shown that file's neighbors — what it imports and what imports it — so it looks at related code instead of editing in isolation. This works from the very first edit, before any history has accumulated. It is a regex-based heuristic (relative imports, JS/TS for now) meant as a relevance hint, not a compiler.
 
 Diffs are computed from ai-log's own snapshots, not from the editor's payload — so it works identically across tools, survives editor updates, and **works even in projects without git**.
 
@@ -86,14 +90,14 @@ You don't configure anything by hand. `ai-log init` writes both the hooks and th
 | `SessionStart` | — | Injects an overview of recent project changes at the start of a session |
 | `Stop` | — | Reconciles the working tree at the end of a turn, catching edits made through the shell |
 
-The `PreToolUse` injection is the key piece: right before Claude edits `src/auth.js`, it receives the recent ai-log history for `src/auth.js` specifically — relevant, and without flooding the context. `init` also writes a rule block to `CLAUDE.md` reinforcing that Claude should read `.ai-log/recent.md` before editing.
+The `PreToolUse` injection is the key piece: right before Claude edits `src/auth.js`, it receives the recent ai-log history for `src/auth.js` specifically — plus that file's import-graph neighbors (what it imports and what imports it) — relevant, and without flooding the context. `init` also writes a rule block to `CLAUDE.md` reinforcing that Claude should read `.ai-log/recent.md` before editing.
 
 **MCP server.** `init` also registers a built-in MCP server in `.mcp.json`, so Claude can pull history *on demand* (not just from the automatic injection) with three tools:
 
 | Tool | What it answers |
 | :-- | :-- |
 | `recent_changes` | What changed recently across the project |
-| `file_history` | Recent history of one file + files often changed alongside it |
+| `file_history` | Recent history of one file, its import-graph neighbors, and files often changed alongside it |
 | `search_changes` | Find changes by keyword across file paths and diffs |
 
 The server is hand-written JSON-RPC over stdio — **still zero dependencies**.
@@ -110,16 +114,6 @@ Requires **Cursor 1.7+** (the version that introduced hooks). `init` adds to `.c
 
 **Honest limitation:** Cursor has no hook that injects context *before each individual edit*, so the automatic injection happens once per session (`sessionStart`). To cover edits within a session, `init` also writes a rule to `.cursor/rules/ai-log.mdc` (`alwaysApply: true`) telling the agent to read `.ai-log/recent.md` before editing. Logging itself is deterministic on every edit.
 
-### Windsurf
-
-Requires a Windsurf version with **Cascade Hooks**. `init` adds to `.windsurf/hooks.json`:
-
-| Hook | What it does |
-| :-- | :-- |
-| `post_write_code` | Records the edit after it happens (deterministic, every edit) |
-
-**Honest limitation:** Windsurf's hooks are observational — there is **no hook that can inject context back** to the agent (no session-start, and post-hooks can't return data). So on Windsurf, context is delivered **only** through the rule `init` writes to `.windsurfrules` ("read `.ai-log/recent.md` before editing"). Recording is fully deterministic; context delivery relies on the agent following that rule.
-
 ---
 
 ## Storage: shared vs private
@@ -129,7 +123,7 @@ Requires a Windsurf version with **Cascade Hooks**. `init` adds to `.windsurf/ho
 | | **Shared** (`--shared`) | **Private** (`--private`, default) |
 | :-- | :-- | :-- |
 | `history.jsonl` | committed to git → team memory | gitignored → stays on your machine |
-| `snapshots/`, `recent.md` | local only | local only |
+| `snapshots/`, `recent.md`, `graph.json` | local only | local only |
 | Best for | private repos, or history worth sharing | public repos, or anything sensitive |
 
 With **shared**, every teammate and every future session starts from the same record of what changed. You can switch later by editing `.ai-log/.gitignore`.
@@ -209,8 +203,8 @@ It overlaps with `git log` on purpose — the difference is that ai-log captures
 
 ## Roadmap
 
-- MCP server for Claude Code (query history on demand: "what changed in `auth.js` today?").
-- More tools (Windsurf, Zed, others as their hook APIs land).
+- Import-graph awareness for more languages (it currently covers JavaScript/TypeScript).
+- More editors as their hook APIs land (Zed, JetBrains AI Assistant, …).
 - A file-watcher fallback for editors without hooks.
 
 ---

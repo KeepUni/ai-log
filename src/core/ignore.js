@@ -102,8 +102,3 @@ export function createIgnore(root) {
 
   return { isIgnored };
 }
-
-export function isSecretPath(relPath) {
-  const path = toPosix(relPath);
-  return SECRET_PATTERNS.map((p) => compile(p)).some((re) => re.test(path));
-}

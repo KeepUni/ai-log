@@ -31,5 +31,6 @@ export function withLock(root, fn, { retries = 100, delayMs = 15, staleMs = 1000
       }
     }
   }
+  // lock stayed contended past every retry; run anyway rather than hang the editor
   return fn();
 }

@@ -7,7 +7,7 @@ export const MAX_FILE_BYTES = 512 * 1024;
 
 export function relPathOf(root, absPath) {
   const rel = relative(root, absPath);
-  if (rel === '' || rel.startsWith('..') || rel.includes(`..${sep}`)) return null;
+  if (rel === '' || rel === '..' || rel.startsWith(`..${sep}`)) return null;
   return rel.split(sep).join('/');
 }
 

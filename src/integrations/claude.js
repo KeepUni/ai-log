@@ -47,6 +47,7 @@ export function uninstallClaude(root) {
     if (kept.length) settings.hooks[event] = kept;
     else delete settings.hooks[event];
   }
+  if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
   writeJson(path, settings);
   return path;
 }

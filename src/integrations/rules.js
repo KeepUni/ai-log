@@ -34,9 +34,6 @@ function uninstallBlockRule(path) {
 export const installClaudeRule = (root) => installBlockRule(join(root, 'CLAUDE.md'));
 export const uninstallClaudeRule = (root) => uninstallBlockRule(join(root, 'CLAUDE.md'));
 
-export const installWindsurfRule = (root) => installBlockRule(join(root, '.windsurfrules'));
-export const uninstallWindsurfRule = (root) => uninstallBlockRule(join(root, '.windsurfrules'));
-
 export function installCursorRule(root) {
   const path = join(root, '.cursor', 'rules', 'ai-log.mdc');
   mkdirSync(dirname(path), { recursive: true });

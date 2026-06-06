@@ -4,6 +4,26 @@ All notable changes to ai-log are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [semantic versioning](https://semver.org/).
 
+## [0.4.0] - 2026-06-06
+
+### Added
+- Import-graph context. ai-log now builds a lightweight import graph of your JavaScript/TypeScript files (`.ai-log/graph.json`, built at `init` and kept up to date on every edit). Before an agent edits a file, it is shown that file's neighbors — what it imports and what imports it — through the Claude Code injection and the MCP `file_history` tool. This works from the very first edit, before any change history exists.
+
+### Removed
+- Windsurf support. Windsurf has been folded into Cognition's Devin and its hook surface is in flux, so the integration is removed for now; it may return once it stabilizes. ai-log continues to support Claude Code and Cursor.
+
+### Fixed
+- Runs on all Node >= 18.17: the version is read via `fs` instead of a `with { type: 'json' }` import attribute, which only parses on Node 18.20+.
+- The MCP server returns a tool error result instead of crashing if a tool call throws.
+- Files whose name starts with `..` are no longer skipped (precise path-escape check).
+- The end-of-turn reconcile no longer misses a shell edit made while the previous reconcile was still running: its change cutoff is taken from the scan's start time, not the marker file's modification time.
+- `uninstall` no longer leaves an empty `hooks` object behind in the editor's settings; it removes only what ai-log added.
+- `init` now baselines the hook, rule, and MCP files it creates, so the first end-of-turn reconcile no longer logs ai-log's own setup as project changes.
+- MCP `search_changes` output is ASCII (was a stray em-dash).
+- Removed an unused internal export (`isSecretPath`); secret filtering is unchanged.
+- `ai-log --help` lists the `mcp` subcommand, and dropped a non-working `-v` check.
+- Documentation consistency fixes.
+
 ## [0.3.0] - 2026-06-03
 
 ### Added

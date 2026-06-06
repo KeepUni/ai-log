@@ -1,10 +1,11 @@
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { writeFileAtomic } from '../core/atomic.js';
 import { classify } from '../core/classify.js';
 import { diffLines } from '../core/diff.js';
 import { debug, setDebug } from '../core/debug.js';
 import { createIgnore } from '../core/ignore.js';
+import { neighborsOf, readGraph, updateNode, writeGraph } from '../core/graph.js';
 import { withLock } from '../core/lock.js';
 import { aiLogPaths, findRoot } from '../core/paths.js';
 import { renderFileContext, renderRecentMd } from '../core/recent.js';
@@ -52,9 +53,6 @@ function normalize(tool, payload) {
     if (event === 'sessionStart') return { mode: 'inject-global' };
     if (event === 'stop') return { mode: 'reconcile' };
   }
-  if (tool === 'windsurf') {
-    if (payload.agent_action_name === 'post_write_code') return { mode: 'record', file: payload.tool_info?.file_path };
-  }
   return { mode: 'noop' };
 }
 
@@ -86,10 +84,11 @@ function inject(tool, mode, root, file) {
   }
   const relPath = file ? relPathOf(root, resolve(file)) : null;
   if (!relPath) return;
-  emitClaude('PreToolUse', renderFileContext(entries, relPath));
+  const neighbors = neighborsOf(readGraph(root), relPath);
+  emitClaude('PreToolUse', renderFileContext(entries, relPath, neighbors));
 }
 
-function commit(root, tool, relPath, before, after) {
+function commit(root, tool, relPath, before, after, graph) {
   const diff = diffLines(before, after);
   if (diff.changed === 0) return false;
 
@@ -113,6 +112,7 @@ function commit(root, tool, relPath, before, after) {
     patch,
   });
   writeSnapshot(root, relPath, after);
+  if (graph) updateNode(graph, root, relPath, after);
   debug(root, `${created ? 'created' : 'recorded'} ${relPath} +${diff.added}/-${diff.removed} ${size}`);
   return true;
 }
@@ -134,22 +134,28 @@ function record(tool, root, file) {
   withLock(root, () => {
     const before = readSnapshot(root, relPath) ?? '';
     if (before === after) return debug(root, `skip nochange ${relPath}`);
-    if (commit(root, tool, relPath, before, after)) refresh(root);
+    const graph = readGraph(root);
+    if (commit(root, tool, relPath, before, after, graph)) {
+      writeGraph(root, graph);
+      refresh(root);
+    }
   });
 }
 
 function reconcile(tool, root) {
   const ignore = createIgnore(root);
   const marker = join(aiLogPaths(root).base, '.reconcile');
+  const scanStart = Date.now();
   let since = 0;
   try {
-    since = statSync(marker).mtimeMs;
+    since = Number(readFileSync(marker, 'utf8')) || 0;
   } catch {
     // first reconcile of this project; scan everything once
   }
 
   withLock(root, () => {
     let recorded = 0;
+    const graph = readGraph(root);
 
     walkFiles(root, ignore, (abs, relPath) => {
       let mtimeMs;
@@ -158,23 +164,26 @@ function reconcile(tool, root) {
       } catch {
         return;
       }
-      if (mtimeMs <= since) return;
+      if (mtimeMs < since) return;
       const state = readFileState(abs);
       if (!state.exists || state.binary || state.tooLarge) return;
       const before = readSnapshot(root, relPath) ?? '';
       if (before === state.content) return;
-      if (commit(root, tool, relPath, before, state.content)) recorded++;
+      if (commit(root, tool, relPath, before, state.content, graph)) recorded++;
     });
 
     for (const relPath of listSnapshots(root)) {
       if (ignore.isIgnored(relPath) || existsSync(join(root, ...relPath.split('/')))) continue;
       const before = readSnapshot(root, relPath) ?? '';
-      if (before !== '' && commit(root, tool, relPath, before, '')) recorded++;
+      if (before !== '' && commit(root, tool, relPath, before, '', graph)) recorded++;
       removeSnapshot(root, relPath);
     }
 
-    if (recorded) refresh(root);
-    writeFileAtomic(marker, String(Date.now()));
+    if (recorded) {
+      writeGraph(root, graph);
+      refresh(root);
+    }
+    writeFileAtomic(marker, String(scanStart));
     debug(root, `reconcile recorded ${recorded}`);
   });
 }
@@ -189,7 +198,7 @@ export async function capture(options) {
 
   const { mode, file } = normalize(tool, payload);
   const root = locate(payload, file);
-  debug(root, `event=${payload.hook_event_name || payload.agent_action_name} tool=${tool} mode=${mode} file=${file ?? '-'} root=${root ?? 'none'}`);
+  debug(root, `event=${payload.hook_event_name} tool=${tool} mode=${mode} file=${file ?? '-'} root=${root ?? 'none'}`);
 
   if (mode === 'noop') return;
   if (mode === 'record' && !file) return;

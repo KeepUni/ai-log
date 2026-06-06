@@ -5,31 +5,43 @@ import { createIgnore } from '../core/ignore.js';
 import { writeJson } from '../core/jsonfile.js';
 import { aiLogPaths } from '../core/paths.js';
 import { renderRecentMd } from '../core/recent.js';
-import { readFileState, walkFiles, writeSnapshot } from '../core/snapshots.js';
+import { updateNode, writeGraph } from '../core/graph.js';
+import { readFileState, relPathOf, walkFiles, writeSnapshot } from '../core/snapshots.js';
 import { readRecentEntries } from '../core/store.js';
 import { installClaude, installClaudeMcp } from '../integrations/claude.js';
 import { installCursor } from '../integrations/cursor.js';
-import { installClaudeRule, installCursorRule, installWindsurfRule } from '../integrations/rules.js';
-import { installWindsurf } from '../integrations/windsurf.js';
+import { installClaudeRule, installCursorRule } from '../integrations/rules.js';
 import { VERSION } from '../index.js';
 
 const binPath = fileURLToPath(new URL('../../bin/ai-log.js', import.meta.url));
 
 const GITIGNORE = {
   private: '*\n',
-  shared: 'snapshots/\nrecent.md\ndebug.log\n.lock/\n.reconcile\n',
+  shared: 'snapshots/\nrecent.md\ndebug.log\n.lock/\n.reconcile\ngraph.json\n',
 };
 
 function snapshotTree(root) {
   let count = 0;
+  const graph = {};
   walkFiles(root, createIgnore(root), (abs, rel) => {
     const state = readFileState(abs);
     if (state.exists && !state.binary && !state.tooLarge) {
       writeSnapshot(root, rel, state.content);
+      updateNode(graph, root, rel, state.content);
       count++;
     }
   });
+  writeGraph(root, graph);
   return count;
+}
+
+function baselineInstalled(root, files) {
+  for (const abs of files) {
+    const rel = relPathOf(root, abs);
+    if (!rel) continue;
+    const state = readFileState(abs);
+    if (state.exists && !state.binary && !state.tooLarge) writeSnapshot(root, rel, state.content);
+  }
 }
 
 async function resolveStorage(options) {
@@ -45,8 +57,8 @@ async function resolveStorage(options) {
 }
 
 function resolveTools(options) {
-  const picked = ['claude', 'cursor', 'windsurf'].filter((tool) => options[tool]);
-  return picked.length ? picked : ['claude', 'cursor', 'windsurf'];
+  const picked = ['claude', 'cursor'].filter((tool) => options[tool]);
+  return picked.length ? picked : ['claude', 'cursor'];
 }
 
 export async function init(options) {
@@ -80,10 +92,8 @@ export async function init(options) {
     installed.push(['Cursor hooks', installCursor(root, binPath, options.debug)]);
     installed.push(['Cursor rule', installCursorRule(root)]);
   }
-  if (tools.includes('windsurf')) {
-    installed.push(['Windsurf hooks', installWindsurf(root, binPath)]);
-    installed.push(['Windsurf rule', installWindsurfRule(root)]);
-  }
+
+  baselineInstalled(root, installed.map(([, file]) => file));
 
   const out = [];
   out.push(`${reinit ? 'Re-initialized' : 'Initialized'} ai-log in ${paths.base}`);

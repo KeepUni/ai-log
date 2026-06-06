@@ -26,7 +26,7 @@ Tests use the built-in `node:test` runner (no framework). CI runs them on Linux,
 bin/            CLI entry point
 src/cli.js      command routing
 src/commands/   init, capture, status, context, uninstall
-src/core/       diff, classify, ignore, snapshots, store, recent, lock, atomic, paths
+src/core/       diff, classify, ignore, graph, snapshots, store, recent, lock, atomic, paths
 src/integrations/  claude, cursor, rules
 test/           node:test suites
 ```

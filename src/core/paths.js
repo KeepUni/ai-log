@@ -12,6 +12,7 @@ export function aiLogPaths(root) {
     recent: join(base, 'recent.md'),
     snapshots: join(base, 'snapshots'),
     config: join(base, 'config.json'),
+    graph: join(base, 'graph.json'),
     gitignore: join(base, '.gitignore'),
   };
 }

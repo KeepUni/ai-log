@@ -43,6 +43,7 @@ export function uninstallCursor(root) {
     if (kept.length) config.hooks[event] = kept;
     else delete config.hooks[event];
   }
+  if (Object.keys(config.hooks).length === 0) delete config.hooks;
   writeJson(path, config);
   return path;
 }

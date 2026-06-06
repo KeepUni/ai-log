@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { readFileState } from '../src/core/snapshots.js';
+import { readFileState, relPathOf } from '../src/core/snapshots.js';
 
 function tmpFile(name, bytes) {
   const dir = mkdtempSync(join(tmpdir(), 'ailog-snap-'));
@@ -41,4 +41,11 @@ test('strips a leading UTF-8 BOM from file content', () => {
 test('reports a missing file', () => {
   const state = readFileState(join(tmpdir(), 'ailog-does-not-exist-xyz'));
   assert.equal(state.exists, false);
+});
+
+test('relPathOf keeps in-root paths (incl. names starting with ..) and rejects escapes', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ailog-rel-'));
+  assert.equal(relPathOf(root, join(root, 'src', 'a.js')), 'src/a.js');
+  assert.equal(relPathOf(root, join(root, '..weird.txt')), '..weird.txt');
+  assert.equal(relPathOf(root, join(root, '..', 'outside.js')), null);
 });

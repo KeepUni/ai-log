@@ -1,3 +1,4 @@
+import { neighborsOf, readGraph } from './core/graph.js';
 import { findRoot } from './core/paths.js';
 import { renderFileContext, renderRecentMd } from './core/recent.js';
 import { readEntries, readRecentEntries } from './core/store.js';
@@ -36,7 +37,7 @@ const TOOLS = [
 
 function line(entry) {
   const kinds = entry.kinds.length ? ` [${entry.kinds.join(', ')}]` : '';
-  return `${entry.file} — ${entry.size} +${entry.added}/-${entry.removed}${kinds} @ ${entry.ts}`;
+  return `${entry.file} | ${entry.size} +${entry.added}/-${entry.removed}${kinds} @ ${entry.ts}`;
 }
 
 function callTool(root, name, args) {
@@ -45,7 +46,8 @@ function callTool(root, name, args) {
   if (name === 'file_history') {
     const file = String(args.file || '').replace(/\\/g, '/');
     if (!file) return 'Provide a "file" argument.';
-    return renderFileContext(readRecentEntries(root), file) || `No recorded changes for ${file}.`;
+    const neighbors = neighborsOf(readGraph(root), file);
+    return renderFileContext(readRecentEntries(root), file, neighbors) || `No recorded changes for ${file}.`;
   }
   if (name === 'search_changes') {
     const query = String(args.query || '').toLowerCase();
@@ -81,9 +83,13 @@ export function handle(request, root) {
     case 'tools/list':
       return reply(id, { tools: TOOLS });
     case 'tools/call': {
-      const text = callTool(root, params?.name, params?.arguments || {});
-      if (text === null) return fail(id, -32602, `Unknown tool: ${params?.name}`);
-      return reply(id, { content: [{ type: 'text', text }] });
+      try {
+        const text = callTool(root, params?.name, params?.arguments || {});
+        if (text === null) return fail(id, -32602, `Unknown tool: ${params?.name}`);
+        return reply(id, { content: [{ type: 'text', text }] });
+      } catch (error) {
+        return reply(id, { content: [{ type: 'text', text: `ai-log error: ${error.message}` }], isError: true });
+      }
     }
     default:
       if (id === undefined) return null;

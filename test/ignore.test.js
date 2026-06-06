@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { createIgnore, isSecretPath } from '../src/core/ignore.js';
+import { createIgnore } from '../src/core/ignore.js';
 
 test('ignores defaults, secrets, and .gitignore patterns', () => {
   const root = mkdtempSync(join(tmpdir(), 'ailog-'));
@@ -40,10 +40,4 @@ test('respects nested .gitignore files', () => {
   assert.equal(ignore.isIgnored('src/tmp/x.js'), true, 'nested rule applies under its dir');
   assert.equal(ignore.isIgnored('tmp/x.js'), false, 'nested rule is scoped to its dir');
   assert.equal(ignore.isIgnored('src/keep.js'), false);
-});
-
-test('flags secret paths', () => {
-  assert.equal(isSecretPath('config/.env'), true);
-  assert.equal(isSecretPath('id_rsa'), true);
-  assert.equal(isSecretPath('src/index.js'), false);
 });

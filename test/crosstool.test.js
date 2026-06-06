@@ -22,7 +22,6 @@ function project() {
 const payloads = {
   claude: (root, file) => ({ hook_event_name: 'PostToolUse', cwd: root, tool_input: { file_path: file } }),
   cursor: (root, file) => ({ hook_event_name: 'afterFileEdit', workspace_roots: [root], file_path: file }),
-  windsurf: (root, file) => ({ agent_action_name: 'post_write_code', tool_info: { file_path: file } }),
 };
 
 for (const [tool, payload] of Object.entries(payloads)) {
@@ -42,21 +41,9 @@ for (const [tool, payload] of Object.entries(payloads)) {
   });
 }
 
-test('init wires Windsurf hooks (command + powershell) and rule', () => {
-  const root = project();
-  run(root, ['init', '--private', '--windsurf', '--yes']);
-
-  const hooks = JSON.parse(readFileSync(join(root, '.windsurf', 'hooks.json'), 'utf8'));
-  const entry = hooks.hooks.post_write_code[0];
-  assert.ok(entry.command.includes('capture --tool windsurf'));
-  assert.ok(entry.powershell.includes('capture --tool windsurf'));
-  assert.match(readFileSync(join(root, '.windsurfrules'), 'utf8'), /recent\.md/);
-});
-
-test('default init installs all three tools', () => {
+test('default init installs both tools', () => {
   const root = project();
   run(root, ['init', '--private', '--yes']);
   assert.ok(readFileSync(join(root, '.claude', 'settings.json'), 'utf8').includes('capture --tool claude'));
   assert.ok(readFileSync(join(root, '.cursor', 'hooks.json'), 'utf8').includes('capture --tool cursor'));
-  assert.ok(readFileSync(join(root, '.windsurf', 'hooks.json'), 'utf8').includes('capture --tool windsurf'));
 });

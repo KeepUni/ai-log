@@ -7,6 +7,7 @@ const SAMPLE_LINES = 12;
 const CO_CHANGE_WINDOW_MS = 120000;
 const RELATED_LIMIT = 3;
 const RELATED_MIN = 2;
+const GRAPH_LIMIT = 8;
 
 function shortTime(iso) {
   return iso.replace('T', ' ').replace(/:\d{2}\.\d{3}Z$/, 'Z').replace(/\.\d{3}Z$/, 'Z');
@@ -78,23 +79,36 @@ export function renderRecentMd(entries) {
   return lines.join('\n');
 }
 
-export function renderFileContext(entries, file) {
+export function renderFileContext(entries, file, neighbors = null) {
+  const lines = [];
   const forFile = entries.filter((e) => e.file === file).slice(-FILE_ENTRIES).reverse();
-  if (forFile.length === 0) return '';
-  const lines = [`Recent ai-log history for ${file} (most recent first):`, ''];
-  for (const entry of forFile) {
-    lines.push(`* ${shortTime(entry.ts)} (${summary(entry)})`);
-    const snippet = hunk(entry.patch, SAMPLE_LINES);
-    if (snippet) lines.push('```diff', snippet, '```');
-  }
-
-  const related = relatedFiles(entries, file);
-  if (related.length) {
-    lines.push('', `Files often changed alongside ${file} (check them before you edit):`);
-    for (const rel of related) {
-      const last = entries.filter((e) => e.file === rel).at(-1);
-      lines.push(`* ${rel} (latest: ${summary(last)} ${shortTime(last.ts)})`);
+  if (forFile.length) {
+    lines.push(`Recent ai-log history for ${file} (most recent first):`, '');
+    for (const entry of forFile) {
+      lines.push(`* ${shortTime(entry.ts)} (${summary(entry)})`);
+      const snippet = hunk(entry.patch, SAMPLE_LINES);
+      if (snippet) lines.push('```diff', snippet, '```');
+    }
+    const related = relatedFiles(entries, file);
+    if (related.length) {
+      lines.push('', `Files often changed alongside ${file} (check them before you edit):`);
+      for (const rel of related) {
+        const last = entries.filter((e) => e.file === rel).at(-1);
+        lines.push(`* ${rel} (latest: ${summary(last)} ${shortTime(last.ts)})`);
+      }
     }
   }
-  return lines.join('\n');
+
+  if (neighbors?.imports.length) {
+    if (lines.length) lines.push('');
+    lines.push(`${file} imports (review these if your change touches them):`);
+    for (const dep of neighbors.imports.slice(0, GRAPH_LIMIT)) lines.push(`* ${dep}`);
+  }
+  if (neighbors?.importedBy.length) {
+    if (lines.length) lines.push('');
+    lines.push(`Files that import ${file} (your change may affect them):`);
+    for (const dep of neighbors.importedBy.slice(0, GRAPH_LIMIT)) lines.push(`* ${dep}`);
+  }
+
+  return lines.length ? lines.join('\n') : '';
 }
