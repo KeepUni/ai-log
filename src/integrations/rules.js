@@ -23,11 +23,13 @@ function installBlockRule(path) {
   return path;
 }
 
-function uninstallBlockRule(path) {
+export function uninstallBlockRule(path) {
   if (!existsSync(path)) return null;
   const existing = readFileSync(path, 'utf8');
   if (!existing.includes(START)) return null;
-  writeFileSync(path, `${existing.replace(BLOCK, '\n').trim()}\n`);
+  const rest = existing.replace(BLOCK, '\n').trim();
+  if (rest) writeFileSync(path, `${rest}\n`);
+  else rmSync(path);
   return path;
 }
 

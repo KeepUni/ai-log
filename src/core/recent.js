@@ -38,6 +38,13 @@ function hunk(patch, max) {
   return head.join('\n');
 }
 
+function section(lines, header, items, limit) {
+  if (!items.length) return;
+  if (lines.length) lines.push('');
+  lines.push(header);
+  for (const item of items.slice(0, limit)) lines.push(`* ${item}`);
+}
+
 function relatedFiles(entries, file) {
   const targetTimes = entries.filter((e) => e.file === file).map((e) => Date.parse(e.ts));
   if (targetTimes.length === 0) return [];
@@ -99,15 +106,9 @@ export function renderFileContext(entries, file, neighbors = null) {
     }
   }
 
-  if (neighbors?.imports.length) {
-    if (lines.length) lines.push('');
-    lines.push(`${file} imports (review these if your change touches them):`);
-    for (const dep of neighbors.imports.slice(0, GRAPH_LIMIT)) lines.push(`* ${dep}`);
-  }
-  if (neighbors?.importedBy.length) {
-    if (lines.length) lines.push('');
-    lines.push(`Files that import ${file} (your change may affect them):`);
-    for (const dep of neighbors.importedBy.slice(0, GRAPH_LIMIT)) lines.push(`* ${dep}`);
+  if (neighbors) {
+    section(lines, `${file} imports (review these if your change touches them):`, neighbors.imports, GRAPH_LIMIT);
+    section(lines, `Files that import ${file} (your change may affect them):`, neighbors.importedBy, GRAPH_LIMIT);
   }
 
   return lines.length ? lines.join('\n') : '';

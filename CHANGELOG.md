@@ -4,6 +4,20 @@ All notable changes to ai-log are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [semantic versioning](https://semver.org/).
 
+## [0.4.1] - 2026-06-08
+
+### Added
+- `ai-log uninstall --purge` also deletes the `.ai-log` directory, for a clean, complete removal. (To remove the CLI itself, run `npm rm -g @keepuni/ai-log`.)
+
+### Fixed
+- `uninstall` no longer leaves empty config husks behind: a settings file, `.mcp.json`, hooks file, or rule file left holding only ai-log's entries is deleted rather than kept as an empty stub.
+- The import graph no longer keeps a deleted or renamed file in the import lists of files that referenced it, so the injected context and the MCP `file_history` tool stop pointing at a path that no longer exists.
+- `uninstall` now also removes ai-log's leftover Windsurf hook and rule (`.windsurf/hooks.json`, `.windsurfrules`) written by an older version, so upgrading from 0.3 and uninstalling no longer leaves orphaned entries behind.
+- The MCP `file_history` tool description now mentions the import-graph neighbors it returns.
+
+### Changed
+- The import graph also recognizes `.mts` and `.cts` files.
+
 ## [0.4.0] - 2026-06-06
 
 ### Added

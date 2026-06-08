@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -156,12 +156,23 @@ test('uninstall removes our hooks but keeps the user\'s own', () => {
   assert.match(after, /echo mine/, "the user's own hook is preserved");
 });
 
-test('uninstall leaves settings pristine when ai-log was the only hook', () => {
+test('uninstall removes the files it created once they hold only ai-log', () => {
   const root = project();
   run(root, ['init', '--private', '--claude', '--yes']);
   run(root, ['uninstall']);
-  const settings = JSON.parse(readFileSync(join(root, '.claude', 'settings.json'), 'utf8'));
-  assert.deepEqual(settings, {}, 'no empty hooks shell is left behind');
+  assert.ok(!existsSync(join(root, '.claude', 'settings.json')), 'settings file removed, not left as {}');
+  assert.ok(!existsSync(join(root, '.mcp.json')), '.mcp.json removed');
+  assert.ok(!existsSync(join(root, 'CLAUDE.md')), 'CLAUDE.md removed');
+  assert.ok(!existsSync(join(root, '.claude')), 'the now-empty .claude dir is removed too');
+  assert.ok(existsSync(join(root, '.ai-log')), 'history is kept without --purge');
+});
+
+test('uninstall --purge deletes the .ai-log directory', () => {
+  const root = project();
+  run(root, ['init', '--private', '--yes']);
+  assert.ok(existsSync(join(root, '.ai-log')), 'init created .ai-log');
+  run(root, ['uninstall', '--purge']);
+  assert.ok(!existsSync(join(root, '.ai-log')), '--purge removed .ai-log');
 });
 
 test('import-graph context surfaces imports and importers before any edit history', () => {
@@ -223,6 +234,40 @@ test('`context <file>` shows the import graph for inspection', () => {
   const out = run(root, ['context', 'src/b.js']);
   assert.match(out, /Files that import src\/b\.js/);
   assert.match(out, /src\/a\.js/);
+});
+
+test('deleting a file prunes it from other files\' import-graph edges', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ailog-graph-del-'));
+  mkdirSync(join(root, 'src'));
+  writeFileSync(join(root, 'src', 'a.js'), "import { b } from './b';\nexport const a = b;\n");
+  writeFileSync(join(root, 'src', 'b.js'), 'export const b = 2;\n');
+  run(root, ['init', '--private', '--yes']);
+
+  rmSync(join(root, 'src', 'b.js'));
+  run(root, ['capture', '--tool', 'claude'], JSON.stringify({ hook_event_name: 'Stop', cwd: root }));
+
+  const graph = JSON.parse(readFileSync(join(root, '.ai-log', 'graph.json'), 'utf8'));
+  for (const edges of Object.values(graph)) {
+    assert.ok(!edges.includes('src/b.js'), 'the deleted file is pruned from every import list');
+  }
+});
+
+test('uninstall cleans up legacy Windsurf artifacts from an older install', () => {
+  const root = project();
+  run(root, ['init', '--private', '--yes']);
+
+  // simulate a project initialized by v0.3, when Windsurf was supported
+  mkdirSync(join(root, '.windsurf'));
+  writeFileSync(join(root, '.windsurf', 'hooks.json'), JSON.stringify({
+    version: 1,
+    hooks: { post_write_code: [{ command: 'node ai-log capture --tool windsurf' }] },
+  }));
+  writeFileSync(join(root, '.windsurfrules'), '<!-- ai-log:start -->\n## ai-log\n\nrule text\n<!-- ai-log:end -->\n');
+
+  run(root, ['uninstall']);
+
+  assert.ok(!existsSync(join(root, '.windsurf', 'hooks.json')), 'Windsurf hooks file held only ai-log, so it is removed');
+  assert.ok(!existsSync(join(root, '.windsurfrules')), 'Windsurf rule file held only ai-log, so it is removed');
 });
 
 test('a secret file is never recorded', () => {

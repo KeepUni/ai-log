@@ -17,7 +17,7 @@ const TOOLS = [
   {
     name: 'file_history',
     description:
-      'Recent ai-log history for one file (with diffs), plus files often changed alongside it. Call before editing that file.',
+      'Recent ai-log history for one file (with diffs), its import-graph neighbors (what it imports and what imports it), and files often changed alongside it. Call before editing that file.',
     inputSchema: {
       type: 'object',
       properties: { file: { type: 'string', description: 'Project-relative path, e.g. src/auth.js' } },

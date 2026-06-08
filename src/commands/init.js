@@ -35,6 +35,8 @@ function snapshotTree(root) {
   return count;
 }
 
+// The hook/rule/MCP files init just wrote are not source, so they need a
+// snapshot baseline (so the first reconcile ignores them) but no graph node.
 function baselineInstalled(root, files) {
   for (const abs of files) {
     const rel = relPathOf(root, abs);

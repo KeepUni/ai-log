@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { extractImports, fileEdges, neighborsOf } from '../src/core/graph.js';
+import { extractImports, fileEdges, neighborsOf, removeNode } from '../src/core/graph.js';
 
 test('extractImports finds import/require/dynamic/side-effect specifiers', () => {
   const src = [
@@ -43,4 +43,12 @@ test('neighborsOf returns a file\'s imports and its reverse importers', () => {
   const n = neighborsOf(graph, 'src/b.js');
   assert.deepEqual(n.imports, ['src/d.js']);
   assert.deepEqual(n.importedBy.sort(), ['src/a.js', 'src/c.js']);
+});
+
+test('removeNode deletes a node and prunes it from every other edge list', () => {
+  const graph = { 'src/a.js': ['src/b.js', 'src/c.js'], 'src/d.js': ['src/b.js'], 'src/b.js': ['src/c.js'] };
+  removeNode(graph, 'src/b.js');
+  assert.ok(!('src/b.js' in graph), 'the node itself is gone');
+  assert.deepEqual(graph['src/a.js'], ['src/c.js'], 'pruned from a node that still has other edges');
+  assert.ok(!('src/d.js' in graph), 'a node left with no edges is dropped');
 });

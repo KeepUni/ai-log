@@ -12,14 +12,14 @@ Usage:
   ai-log init [--shared|--private] [--claude] [--cursor] [--yes]
   ai-log status
   ai-log context [file]
-  ai-log uninstall
+  ai-log uninstall [--purge]
   ai-log capture --tool <claude|cursor>   (called by editor hooks)
 
 Commands:
   init        Set up .ai-log and install hooks for your AI tools
   status      Show what has been recorded so far
   context     Print the recent history (optionally for one file)
-  uninstall   Remove the hooks ai-log installed (keeps the history)
+  uninstall   Remove ai-log's hooks and rules (add --purge to also delete .ai-log)
   capture     Record an edit or inject context; driven by hooks, not by hand
   mcp         Run the MCP server (Claude Code); driven by .mcp.json, not by hand`;
 
@@ -64,7 +64,7 @@ export async function run(argv) {
     case 'context':
       return context(positionals[1]);
     case 'uninstall':
-      return uninstall();
+      return uninstall({ purge: flags.purge });
     default:
       console.log(HELP);
   }

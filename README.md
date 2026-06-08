@@ -184,7 +184,7 @@ Every entry is one append — the full file is never re-read to add a record.
 ai-log init [--shared|--private] [--claude] [--cursor] [--yes]
 ai-log status            Show what has been recorded so far
 ai-log context [file]    Print recent history (all, or for one file)
-ai-log uninstall         Remove the hooks ai-log installed (keeps the history)
+ai-log uninstall [--purge]   Remove ai-log's hooks and rules (--purge also deletes .ai-log)
 ```
 
 `ai-log capture` exists too, but it is driven by the editor hooks — you never call it by hand.

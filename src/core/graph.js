@@ -3,8 +3,7 @@ import { join, posix } from 'node:path';
 import { writeFileAtomic } from './atomic.js';
 import { aiLogPaths } from './paths.js';
 
-const SOURCE_RE = /\.(?:c|m)?[jt]sx?$/;
-const SOURCE_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
+const SOURCE_EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
 
 const SPEC_RES = [
   /\bfrom\s*['"]([^'"\n]+)['"]/g,
@@ -14,7 +13,7 @@ const SPEC_RES = [
 ];
 
 function isSource(relPath) {
-  return SOURCE_RE.test(relPath);
+  return SOURCE_EXTS.some((ext) => relPath.endsWith(ext));
 }
 
 function isFile(root, relPath) {
@@ -59,6 +58,16 @@ export function updateNode(graph, root, relPath, content) {
   const edges = fileEdges(root, relPath, content);
   if (edges.length) graph[relPath] = edges;
   else delete graph[relPath];
+}
+
+export function removeNode(graph, relPath) {
+  delete graph[relPath];
+  for (const [from, edges] of Object.entries(graph)) {
+    const at = edges.indexOf(relPath);
+    if (at === -1) continue;
+    edges.splice(at, 1);
+    if (!edges.length) delete graph[from];
+  }
 }
 
 export function neighborsOf(graph, file) {

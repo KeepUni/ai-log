@@ -5,7 +5,7 @@ import { classify } from '../core/classify.js';
 import { diffLines } from '../core/diff.js';
 import { debug, setDebug } from '../core/debug.js';
 import { createIgnore } from '../core/ignore.js';
-import { neighborsOf, readGraph, updateNode, writeGraph } from '../core/graph.js';
+import { neighborsOf, readGraph, removeNode, updateNode, writeGraph } from '../core/graph.js';
 import { withLock } from '../core/lock.js';
 import { aiLogPaths, findRoot } from '../core/paths.js';
 import { renderFileContext, renderRecentMd } from '../core/recent.js';
@@ -112,7 +112,10 @@ function commit(root, tool, relPath, before, after, graph) {
     patch,
   });
   writeSnapshot(root, relPath, after);
-  if (graph) updateNode(graph, root, relPath, after);
+  if (graph) {
+    if (after === '') removeNode(graph, relPath);
+    else updateNode(graph, root, relPath, after);
+  }
   debug(root, `${created ? 'created' : 'recorded'} ${relPath} +${diff.added}/-${diff.removed} ${size}`);
   return true;
 }

@@ -1,3 +1,4 @@
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { readJson, writeJson } from '../core/jsonfile.js';
 
@@ -44,6 +45,8 @@ export function uninstallCursor(root) {
     else delete config.hooks[event];
   }
   if (Object.keys(config.hooks).length === 0) delete config.hooks;
-  writeJson(path, config);
+  const keys = Object.keys(config);
+  if (keys.length === 0 || (keys.length === 1 && keys[0] === 'version')) rmSync(path);
+  else writeJson(path, config);
   return path;
 }

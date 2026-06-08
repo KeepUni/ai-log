@@ -1,3 +1,4 @@
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { readJson, writeJson } from '../core/jsonfile.js';
 
@@ -48,7 +49,8 @@ export function uninstallClaude(root) {
     else delete settings.hooks[event];
   }
   if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
-  writeJson(path, settings);
+  if (Object.keys(settings).length === 0) rmSync(path);
+  else writeJson(path, settings);
   return path;
 }
 
@@ -70,6 +72,8 @@ export function uninstallClaudeMcp(root) {
   const config = readJson(path);
   if (!config?.mcpServers?.['ai-log']) return null;
   delete config.mcpServers['ai-log'];
-  writeJson(path, config);
+  if (Object.keys(config.mcpServers).length === 0) delete config.mcpServers;
+  if (Object.keys(config).length === 0) rmSync(path);
+  else writeJson(path, config);
   return path;
 }
